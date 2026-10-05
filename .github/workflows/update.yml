@@ -1,0 +1,54 @@
+name: update-data
+
+on:
+  schedule:
+    # GitHub의 시간은 UTC 기준입니다. 한국시간 = UTC + 9시간.
+    - cron: "0 0 * * 1-5"   # 평일 09:00 KST
+    - cron: "0 5 * * 1-5"   # 평일 14:00 KST
+  workflow_dispatch:         # Actions 탭에서 직접 실행할 때 사용
+    inputs:
+      limit:
+        description: "앞에서부터 N종목만 시험 실행 (0이면 전체)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: write            # 가져온 데이터를 저장소에 저장하기 위해 필요
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: 시험 코드 실행
+        run: python -m unittest discover -s tests
+
+      - name: 일봉 가져오기
+        run: python -m src.fetch_prices --limit "${{ github.event.inputs.limit || 0 }}"
+
+      - name: 데이터 저장
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then
+            echo "바뀐 데이터가 없습니다."
+          else
+            git commit -m "data: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M') KST 업데이트"
+            git pull --rebase
+            git push
+          fi
