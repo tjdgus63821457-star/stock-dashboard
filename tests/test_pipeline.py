@@ -185,6 +185,19 @@ class RunTest(unittest.TestCase):
         self.assertEqual(list(df["date"]), ["2026-10-01", "2026-10-02", "2026-10-06"])
         self.assertEqual(list(df["close"]), [100.0, 110.0, 110.0])
 
+    def test_backfill_ignores_existing_start(self):
+        stocks = make_stocks(1)
+        self.run_with(stocks, lambda s, a, b: {x: make_df(["2026-10-02"]) for x in s})
+        seen = []
+
+        def fetcher(symbols, start, end):
+            seen.append(start)
+            return {x: make_df(["2026-10-02", "2026-10-06"]) for x in symbols}
+
+        fp.run(stocks, fetcher=fetcher, now=self.now, base=self.base,
+               status_path=self.status, batch_size=3, pause=0, backfill_years=5)
+        self.assertEqual(seen[0], date(2026, 10, 6) - __import__("datetime").timedelta(days=5 * 366))
+
     def test_retry_then_give_up(self):
         calls = []
 

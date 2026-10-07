@@ -11,6 +11,10 @@ on:
         description: "앞에서부터 N종목만 시험 실행 (0이면 전체)"
         required: false
         default: "0"
+      backfill_years:
+        description: "N년 전부터 전체 재수집 (0이면 최근분만)"
+        required: false
+        default: "0"
 
 permissions:
   contents: write            # 가져온 데이터를 저장소에 저장하기 위해 필요
@@ -22,7 +26,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +42,7 @@ jobs:
         run: python -m unittest discover -s tests
 
       - name: 일봉 가져오기
-        run: python -m src.fetch_prices --limit "${{ github.event.inputs.limit || 0 }}"
+        run: python -m src.fetch_prices --limit "${{ github.event.inputs.limit || 0 }}" --backfill-years "${{ github.event.inputs.backfill_years || 0 }}"
 
       - name: 지표 계산
         run: python -m src.indicators

@@ -114,12 +114,18 @@ def run(
     status_path=STATUS_PATH,
     batch_size=BATCH_SIZE,
     pause=1.0,
+    backfill_years=0,
 ):
     """종목 목록의 일봉을 받아 저장하고, 실행 결과 요약(dict)을 돌려줍니다."""
     now = now or datetime.now(KST)
     today = now.date()
     olds = {s.code: load_prices(s.code, base) for s in stocks}
-    starts = {s.code: start_date_for(olds[s.code], today) for s in stocks}
+    if backfill_years > 0:
+        # 전체 재수집: 기존 파일과 상관없이 N년 전부터 다시 받아 수정주가를 맞춥니다.
+        first = today - timedelta(days=int(backfill_years * 366))
+        starts = {s.code: first for s in stocks}
+    else:
+        starts = {s.code: start_date_for(olds[s.code], today) for s in stocks}
 
     ok, failed, last_dates = [], [], {}
     for i in range(0, len(stocks), batch_size):
@@ -163,13 +169,15 @@ def run(
 def main(argv=None):
     parser = argparse.ArgumentParser(description="한국 종목 일봉 수집")
     parser.add_argument("--limit", type=int, default=0, help="앞에서부터 N종목만 (0이면 전체)")
+    parser.add_argument("--backfill-years", type=float, default=0,
+                        help="N년 전부터 전체를 다시 받기 (0이면 최근분만 갱신)")
     args = parser.parse_args(argv)
 
     stocks = load_universe()
     if args.limit > 0:
         stocks = stocks[: args.limit]
 
-    status = run(stocks)
+    status = run(stocks, backfill_years=args.backfill_years)
     print(
         f"완료: {status['ok']}/{status['total']}종목 저장, "
         f"실패 {len(status['failed'])}종목, 최신 봉 날짜 {status['latest_bar_date']}"
