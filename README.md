@@ -10,8 +10,8 @@
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| STEP 1 | 저장소 구조, 종목 목록, 일봉 수집, 자동 실행 설정 | 이 단계 |
-| STEP 2 | 지표 계산 (이동평균, RSI, 거래량 등) | 예정 |
+| STEP 1 | 저장소 구조, 종목 목록, 일봉 수집, 자동 실행 설정 | 완료 |
+| STEP 2 | 지표 계산 (이동평균, RSI, ATR, 거래량 등) | 이 단계 |
 | STEP 3 | 예측 모델과 워크포워드 검증 | 예정 |
 | STEP 4 | 매수·매도 신호와 대시보드 페이지 생성 | 예정 |
 | STEP 5 | GitHub Pages 공개, 휴대폰 홈 화면 추가 | 예정 |
@@ -27,6 +27,8 @@ data/status.json         마지막 실행 결과 (성공·실패 종목, 최신 
 src/universe.py          종목 목록 읽기
 src/storage.py           일봉 저장과 병합
 src/fetch_prices.py      일봉 가져오기 (yfinance)
+src/indicators.py        지표 계산, 전 종목 최근 지표 -> data/latest.json
+data/latest.json         종목별 최근 지표 (이동평균, RSI, ATR, 거래량 비율 등)
 tests/test_pipeline.py   인터넷 없이 도는 시험
 .github/workflows/update.yml   평일 09:00, 14:00 KST 자동 실행
 ```

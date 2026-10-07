@@ -40,6 +40,9 @@ jobs:
       - name: 일봉 가져오기
         run: python -m src.fetch_prices --limit "${{ github.event.inputs.limit || 0 }}"
 
+      - name: 지표 계산
+        run: python -m src.indicators
+
       - name: 데이터 저장
         run: |
           git config user.name "github-actions[bot]"
