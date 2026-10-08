@@ -1,5 +1,5 @@
 {
-  "run_at_kst": "2026-10-08 09:15:45",
+  "run_at_kst": "2026-10-08 14:07:00",
   "today_kst": "2026-10-08",
   "data_source": "yfinance",
   "total": 277,
@@ -7,6 +7,6 @@
   "failed": [
     "060370"
   ],
-  "latest_bar_date": "2026-10-07",
+  "latest_bar_date": "2026-10-08",
   "stale": []
 }
