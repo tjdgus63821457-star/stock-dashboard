@@ -1,0 +1,89 @@
+{
+  "updated_kst": "2026-10-09 09:20",
+  "source": "Bigdata.com 센티먼트 리포트 (최근 90일)",
+  "note": "점수 상위 종목만 수집합니다. 이 파일은 자동 갱신되지 않고, 대화에서 요청할 때 갱신합니다.",
+  "stocks": {
+    "402340": {
+      "sentiment": {"current": -0.18, "baseline": -0.08, "momentum": -0.10, "z1mo": -0.79, "z1qt": -0.56},
+      "attention_momentum_pct": -17.2, "doc_count": 2382,
+      "summary": "코스피 전체 매도 기사에 함께 묶여 심리가 기준선 아래입니다. 개별 호재는 10/6 목표가 상향이고, Solidigm 미국 상장 추진에 따른 지배구조 우려가 따라붙습니다.",
+      "events": [{"sev": "caution", "text": "Solidigm 미국 상장 추진을 둘러싼 주주가치 논란"}],
+      "headlines": [
+        {"title": "Solidigm Selects Underwriters for US IPO... Will SK Maintain 'Shareholder Value-Centric' Principle?", "source": "Kookmin Ilbo", "date": "2026-10-08", "sentiment": -0.48, "url": "https://www.kmib.co.kr/article/view.asp?arcid=9000021198&code=11151400&sid1=eco"},
+        {"title": "SK Square, Enhancing Shareholder Returns... Target Price Raised to 1.5 Million Won", "source": "Asia Economy", "date": "2026-10-06", "sentiment": 0.40, "url": "http://www.asiae.co.kr/article/2026100615342713070"},
+        {"title": "Samsung Electronics falls 2% despite record-high earnings... SK Hynix also down", "source": "Yonhap News", "date": "2026-10-08", "sentiment": -0.57, "url": "https://www.yna.co.kr/view/AKR20261008048651008"}
+      ]
+    },
+    "082920": {
+      "sentiment": {"current": 0.0, "baseline": 0.0, "momentum": 0.0, "z1mo": null, "z1qt": null},
+      "attention_momentum_pct": -99.84, "doc_count": 0,
+      "summary": "최근 90일 동안 이 종목을 직접 다룬 기사가 사실상 없습니다. 뉴스로 확인할 수 있는 정보가 없다는 뜻이며, 좋다는 뜻은 아닙니다.",
+      "events": [], "headlines": []
+    },
+    "010950": {
+      "sentiment": {"current": -0.58, "baseline": -0.29, "momentum": -0.29, "z1mo": -2.18, "z1qt": -2.46},
+      "attention_momentum_pct": -19.37, "doc_count": 926,
+      "summary": "정유업계 가격담합 조사 기사가 나오면서 심리가 평소보다 통계적으로 이례적인 수준으로 떨어졌습니다. 조사 대상은 SK에너지와 HD현대오일뱅크이고 S-Oil은 혐의에서 제외됐다는 보도도 있지만, 업종 전체로 번질 위험이 남아 있습니다.",
+      "events": [{"sev": "warn", "text": "공정위 정유사 가격담합 조사(10/7), 국정감사에 정유사 대표 출석 예정"}],
+      "headlines": [
+        {"title": "S. Korea probes SK Energy, HD Hyundai Oilbank over alleged price fixing", "source": "UPI", "date": "2026-10-07", "sentiment": -0.79, "url": "https://www.upi.com/Top_News/World-News/2026/10/07/sk-energy-hd-hyundai-oilbank-price-fixing-diesel-gasoline/4261791411395/"},
+        {"title": "KFTC Initiates Sanctions Against SK Energy and Hyundai Oilbank for Alleged Collusion", "source": "Chosun", "date": "2026-10-07", "sentiment": -0.78, "url": "https://www.chosun.com/economy/economy_general/2026/10/07/GA2TANDEMM4WENLCMIZTQNBRHE/"},
+        {"title": "Representatives of Four Major Oil Companies to Appear at National Audit; Focus on Gas Station Prices and Collusion Allegations", "source": "Edaily", "date": "2026-10-08", "sentiment": -0.54, "url": "https://www.edaily.co.kr/News/Read?newsId=04952806645610952"}
+      ]
+    },
+    "047040": {
+      "sentiment": {"current": 0.01, "baseline": -0.03, "momentum": 0.04, "z1mo": -0.2, "z1qt": -0.42},
+      "attention_momentum_pct": -1.89, "doc_count": 1175,
+      "summary": "심리는 중립입니다. 10/8 조직개편과 데이터센터 사업 확대는 긍정적이고, 가덕도신공항 공법 승인 논란이 10/7부터 이어지고 있습니다.",
+      "events": [{"sev": "caution", "text": "가덕도신공항 공법 승인 졸속 논란, 컨소시엄은 개선안 반영을 주장"}],
+      "headlines": [
+        {"title": "Daewoo E&C denies rushed Gadeokdo airport approval", "source": "The Investor", "date": "2026-10-07", "sentiment": -0.63, "url": "https://www.theinvestor.co.kr/article/10895924"},
+        {"title": "Daewoo E&C Accelerates Securing Future Competitiveness with Organizational Restructuring and Executive Appointments", "source": "Dailian", "date": "2026-10-08", "sentiment": 0.64, "url": "https://www.dailian.co.kr/news/view/1699367/"},
+        {"title": "Daewoo E&C Expands Urban Regeneration to 3 Teams... Establishes Safety and Quality Headquarters", "source": "Global Economic", "date": "2026-10-08", "sentiment": 0.61, "url": "https://www.g-enews.com/article/Real-Estate/2026/10/202610081212031635a9fc143920_1"}
+      ]
+    },
+    "034730": {
+      "sentiment": {"current": -0.10, "baseline": -0.13, "momentum": 0.04, "z1mo": 0.09, "z1qt": -0.37},
+      "attention_momentum_pct": -34.63, "doc_count": 5533,
+      "summary": "수치상 심리는 기준선 수준이지만, 최태원 회장의 SK 지분 매도(약 9,440억 원)와 3%룰 우회 의혹, Solidigm 상장 논란이 기사의 중심입니다. 지배구조 이슈가 풀리지 않은 상태입니다.",
+      "events": [{"sev": "caution", "text": "회장 지분 매도를 둘러싼 3%룰 우회 의혹과 설명 요구(10/6~10/9)"}],
+      "headlines": [
+        {"title": "Sold, but is it really sold?... The hidden PRS structure in Choi Tae-won's SK stake sale", "source": "Money Today", "date": "2026-10-09", "sentiment": -0.24, "url": "https://www.mt.co.kr/stock/2026/10/09/2026100817445057794"},
+        {"title": "Chey Tae-won's SK Share Sale Sparks 3% Rule Bypass Suspicions", "source": "Chosun", "date": "2026-10-07", "sentiment": -0.49, "url": "https://www.chosun.com/english/market-money-en/2026/10/07/2ZCM62GMORFGJGRS4OXNT73LGE/"},
+        {"title": "Solidigm Selects Underwriters for US IPO... Will SK Maintain 'Shareholder Value-Centric' Principle?", "source": "Kookmin Ilbo", "date": "2026-10-08", "sentiment": -0.48, "url": "https://www.kmib.co.kr/article/view.asp?arcid=9000021198&code=11151400&sid1=eco"}
+      ]
+    },
+    "001440": {
+      "sentiment": {"current": 0.01, "baseline": 0.08, "momentum": -0.07, "z1mo": -0.67, "z1qt": -0.66},
+      "attention_momentum_pct": -67.5, "doc_count": 63,
+      "summary": "기사 수가 적어(90일 63건) 심리 수치의 신뢰도가 낮습니다. 최근 이 종목만의 악재는 없고, 가장 큰 재료는 7/30 발표한 2분기 영업이익 113% 증가입니다.",
+      "events": [],
+      "headlines": [
+        {"title": "Taihan Cable & Solution's Q2 Profit Jumps 113%", "source": "Chosun", "date": "2026-07-30", "sentiment": 0.70, "url": "https://www.chosun.com/english/industry-en/2026/07/30/MSVLBL3UZ5HO7BPOBWHFOSNQ2I/"},
+        {"title": "LS, Taihan Cable Firms Pass Copper Costs Amid Price Surge", "source": "Chosun", "date": "2026-09-14", "sentiment": 0.71, "url": "https://www.chosun.com/english/industry-en/2026/09/14/2A3AA75M2ZE4FEUZ2ATBD222PA/"}
+      ]
+    },
+    "079550": {
+      "sentiment": {"current": -0.23, "baseline": -0.11, "momentum": -0.12, "z1mo": -0.65, "z1qt": -1.21},
+      "attention_momentum_pct": -53.51, "doc_count": 720,
+      "summary": "심리가 기준선 아래로 내려왔습니다. 10/6 내부 컴플라이언스 전면 재점검 발표가 있었고, 8월 임원 뇌물 혐의 기소와 9월 구미 공장 화재가 배경에 남아 있습니다.",
+      "events": [{"sev": "caution", "text": "임원 뇌물 혐의 기소(8월) 이후 컴플라이언스 전면 재점검(10/6)"}],
+      "headlines": [
+        {"title": "LIG D&A Re-examines Internal Compliance System... \"Enhancing Trust Through Reform\"", "source": "Yonhap News", "date": "2026-10-06", "sentiment": -0.69, "url": "https://www.yna.co.kr/view/AKR20261006117400003"},
+        {"title": "The 400 million won bribe that became the foundation for a 1.7 trillion won weapons project... executive arrested and indicted", "source": "Global Economic", "date": "2026-08-20", "sentiment": -0.86, "url": "https://www.g-enews.com/article/Industry/2026/08/202608201457207202ea14faf6f5_1"},
+        {"title": "Fire at LIG Nex1 Factory in Gumi Industrial Complex", "source": "News 1", "date": "2026-09-17", "sentiment": -0.66, "url": "https://www.news1.kr/local/daegu-gyeongbuk/6293600"}
+      ]
+    },
+    "032830": {
+      "sentiment": {"current": -0.08, "baseline": 0.02, "momentum": -0.10, "z1mo": -0.78, "z1qt": -0.42},
+      "attention_momentum_pct": -37.03, "doc_count": 2080,
+      "summary": "회사 자체 기사는 대체로 긍정입니다. 10/8 해외 하이브리드 자본증권(약 2조 원) 발행 결정과 무디스 Aa3, 피치 AA 평가가 나왔습니다. 심리 하락은 시장 전체 약세 기사와 채권선도 평가손실 2.1조 원 보도에서 왔습니다.",
+      "events": [],
+      "headlines": [
+        {"title": "Moody's Ratings assigns first-time Aa3 IFSR to Samsung Life; outlook stable", "source": "Moody's Ratings", "date": "2026-10-08", "sentiment": 0.51, "url": "https://ratings.moodys.com/ratings-news/474656"},
+        {"title": "Samsung Life Insurance to Issue $1.5 Billion in Overseas Hybrid Capital Securities", "source": "Financial News", "date": "2026-10-08", "sentiment": 0.63, "url": "https://www.fnnews.com/news/202610081713246096"},
+        {"title": "Samsung Life Insurance's bond forward growth streak broken... cumulative unrealized losses reach 2.1 trillion won", "source": "United Infomax", "date": "2026-10-07", "sentiment": -0.42, "url": "https://news.einfomax.co.kr/news/articleView.html?idxno=4438078"}
+      ]
+    }
+  }
+}

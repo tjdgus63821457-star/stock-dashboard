@@ -96,6 +96,9 @@ details>summary{cursor:pointer;font-weight:600}
 .topcard .hd{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
 tr.det td{background:var(--bg);white-space:normal;text-align:left;padding:10px 12px}
 td.name{cursor:pointer}
+.newsbox{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:12.5px}
+.newsbox .hl{margin-top:3px;font-size:12px}
+.newsbox a{color:var(--accent)}
 td.name:hover{text-decoration:underline}
 
 </style>
@@ -150,7 +153,7 @@ td.name:hover{text-decoration:underline}
       <select id="mk" aria-label="시장"><option value="all">코스피+코스닥</option><option value="KOSPI">코스피</option><option value="KOSDAQ">코스닥</option></select>
     </div>
     <div class="scroll"><table id="tbl"></table></div>
-    <p class="note" style="margin-top:8px">5일 범위는 80% 구간입니다. 과거 같은 변동폭의 종목이 5거래일 뒤 이 범위에 있었던 비율이 약 80%였습니다. 손절 참고선은 종가에서 ATR의 2배를 뺀 값입니다.</p>
+    <p class="note" style="margin-top:8px">5일 범위는 90% 구간입니다. 검증 기간 동안 같은 방식으로 만든 범위에 5거래일 뒤 종가가 들어온 비율이 약 90%였습니다(구간별로는 86~97%). 손절 참고선은 종가에서 ATR의 2배를 뺀 값입니다.</p>
   </section>
 
   <section class="panel">
@@ -206,10 +209,10 @@ $('verdict').innerHTML='<b>먼저 알아둘 점: 매수·매도 시점을 맞히
  '12개 평가 구간 중 '+R.folds_top_beats_universe+'개 구간에서만 평균을 넘었습니다. 반면 5일 뒤 가격 범위는 검증에서 잘 맞았습니다. 이 화면은 범위와 손절선으로 위험을 정하는 용도로 쓰고, 매수·매도 표시는 참고만 하세요.';
 
 /* 검증 타일 */
-var cov=R.range80_coverage;
+var cov=R.range90_coverage, covMin=Math.min.apply(null,R.range90_by_fold||[cov]);
 function tile(lab,big,sub,pillcls,pilltxt){return '<div class="panel tile"><div class="lab">'+lab+' <span class="pill '+pillcls+'">'+pilltxt+'</span></div><div class="big">'+big+'</div><div class="sub">'+sub+'</div></div>'}
 $('tiles').innerHTML=
- tile('5일 뒤 가격 범위 적중',pct(cov,1),'80% 범위라고 했을 때 실제로 들어온 비율',Math.abs(cov-0.8)<0.03?'ok':'warn',Math.abs(cov-0.8)<0.03?'검증됨':'오차 큼')+
+ tile('5일 뒤 가격 범위 적중',pct(cov,1),'90% 범위라고 했을 때 실제로 들어온 비율 · 구간별 최저 '+pct(covMin,1),Math.abs(cov-0.9)<0.02?'ok':'warn',Math.abs(cov-0.9)<0.02?'검증됨':'오차 큼')+
  tile('점수 상위 '+R.top_n+'종목 우위',pp(edge),'5일 수익률, 전체 평균 대비 · 비용 후 '+pp(edgeNet),edgeNet>0.002?'ok':'bad',edgeNet>0.002?'우위':'우위 없음')+
  tile('점수와 수익의 상관(IC)',R.ic_mean.toFixed(3),'0이면 무관, 0.05 이상이면 쓸 만한 수준 · 구간별 '+R.fold_ic.filter(function(x){return x>0}).length+'/'+R.fold_ic.length+'개 양수',R.ic_mean>=0.05?'ok':'warn','약함');
 
@@ -254,10 +257,17 @@ function whyHTML(s){var w=s.why||[];if(!w.length)return '<div class="note">근�
   return '<div class="wrow"><span class="sg '+(p?'p':'n')+'">'+(p?'+':'−')+'</span><span>'+esc(f?f.label:x[0])+' <span class="num">'+fv(x[0],x[2])+'</span> <span class="muted">('+rankText(x[3])+')</span></span>'+
   '<span class="num" style="text-align:right"><span class="wbar"><i style="width:'+(Math.abs(x[1])/mx*100).toFixed(0)+'%;background:'+(p?'var(--ok)':'var(--bad)')+'"></i></span> '+(p?'+':'−')+Math.abs(x[1]).toFixed(3)+'</span>'+
   '<span class="ev">'+evid(x)+'</span></div>'}).join('')+'</div>'}
+/* 뉴스 흐름 */
+var NL={warn:['경고','bad'],caution:['주의','warn'],ok:['양호','ok'],none:['기사 적음','info']};
+function newsPill(s){var n=s.news;if(!n)return '';var l=NL[n.level];return ' <span class="pill '+l[1]+'" title="뉴스 흐름">뉴스 '+l[0]+'</span>'}
+function newsHTML(s){var n=s.news;if(!n)return '<div class="note" style="margin-top:8px">뉴스: 이 종목은 아직 수집하지 않았습니다.</div>';var l=NL[n.level],se=n.sentiment||{};
+ var nums=n.doc_count<5?'기사 '+n.doc_count+'건':'심리 '+(se.current>0?'+':'')+se.current.toFixed(2)+' (기준선 '+(se.baseline>0?'+':'')+se.baseline.toFixed(2)+', 변화 '+(se.momentum>0?'+':'')+se.momentum.toFixed(2)+')'+(se.z1qt==null?'':', 1분기 z '+se.z1qt.toFixed(1));
+ return '<div class="newsbox"><div><b>뉴스 흐름</b> <span class="pill '+l[1]+'">'+l[0]+'</span> <span class="note num">'+nums+'</span></div><div class="note" style="margin-top:2px">'+esc(n.summary)+'</div>'+
+  (n.headlines||[]).map(function(h){return '<div class="hl"><a href="'+esc(h.url)+'" target="_blank" rel="noopener">'+esc(h.title)+'</a> <span class="muted">'+esc(h.source)+' · '+esc(h.date)+' · <span class="num '+(h.sentiment>0?'up':'down')+'">'+(h.sentiment>0?'+':'')+h.sentiment.toFixed(2)+'</span></span></div>'}).join('')+'</div>'}
 var topS=S.slice().sort(function(a,b){return b.score_pct-a.score_pct}).slice(0,15);
 $('topwhy').innerHTML=topS.map(function(s){return '<div class="topcard"><div class="hd"><span class="t"><b>'+esc(s.name)+'</b> <span class="muted num" style="font-size:11px">'+s.code+'</span></span><span class="num">점수 '+(s.score==null?'–':s.score.toFixed(2))+'</span></div>'+
- '<div class="s note">'+won(s.close)+'원 · 5일 범위 <span class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</span> · 손절선 <span class="num">'+won(s.stop)+'</span></div>'+whyHTML(s)+'</div>'}).join('');
-$('topwhy-note').textContent='막대는 그 요인이 이 종목 점수에 준 크기입니다. "단독 근거"는 그 요인 하나만으로 과거 약 '+Math.round((D.explain.factor_span||{}).days/250*10)/10+'년을 봤을 때 방향이 일관됐는지를 뜻합니다. 아래 "점수는 어떻게 만들어지나"에서 요인별 수치를 볼 수 있습니다.';
+ '<div class="s note">'+won(s.close)+'원 · 5일 범위 <span class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</span> · 손절선 <span class="num">'+won(s.stop)+'</span> (5일 안에 닿을 확률 <span class="num">'+pct(s.p_stop,0)+'</span>)</div>'+whyHTML(s)+newsHTML(s)+'</div>'}).join('');
+$('topwhy-note').textContent='막대는 그 요인이 이 종목 점수에 준 크기입니다. "단독 근거"는 그 요인 하나만으로 과거 약 '+Math.round((D.explain.factor_span||{}).days/250*10)/10+'년을 봤을 때 방향이 일관됐는지를 뜻합니다. 아래 "점수는 어떻게 만들어지나"에서 요인별 수치를 볼 수 있습니다. 뉴스 흐름은 과거 검증 자료가 없어 점수에 넣지 않았고, '+(D.news_meta&&D.news_meta.count?D.news_meta.count+'종목만 '+esc(D.news_meta.updated_kst)+' 기준으로 수집해 경고 표시로만 씁니다(대화에서 요청할 때 갱신).':'수집된 뉴스가 없습니다.');
 var fs=D.explain.factor_span||{};
 $('facnote').innerHTML='종목 간 순위를 입력으로 해서 "이후 5일 시장 대비 초과수익" 순위를 예측하는 선형 모델입니다(기간 '+esc(fs.start||'')+' ~ '+esc(fs.end||'')+'). <b>단독 상관(IC)</b>은 그 요인 하나만 썼을 때 하루 단위 순위 상관의 평균이고, <b>양수 구간</b>은 약 60거래일씩 나눈 구간 중 상관이 양수였던 개수입니다. 상관이 0.05에 못 미치고 구간별 방향이 갈리면 우연과 구별하기 어렵습니다. 아래 값은 모두 그런 수준입니다. 주가 자체의 높낮이는 종목 간 비교가 되지 않아 모델에서 제외했습니다.';
 $('factbl').innerHTML='<thead><tr><th class="l">요인</th><th class="l">의미</th><th>모델 가중치</th><th>단독 상관(IC)</th><th>양수 구간</th></tr></thead><tbody>'+
@@ -265,15 +275,15 @@ $('factbl').innerHTML='<thead><tr><th class="l">요인</th><th class="l">의미<
 
 /* 전체 표 */
 var st={sector:'all',q:'',mk:'all',key:'score_pct',dir:-1,open:null};
-var COLS=[['name','종목',1],['close','현재가'],['ret1','1일'],['ret5','5일'],['ret20','20일'],['gap20','20일선 대비'],['rsi14','RSI'],['score_pct','점수(상위%)'],['p_up','+3% 확률'],['p_down','−3% 확률'],['range','5일 80% 범위'],['stop','손절 참고선'],['spark','추세(60일)'],['flags','표시']];
-var sortable={name:1,close:1,ret1:1,ret5:1,ret20:1,gap20:1,rsi14:1,score_pct:1,p_up:1,p_down:1,stop:1};
+var COLS=[['name','종목',1],['close','현재가'],['ret1','1일'],['ret5','5일'],['ret20','20일'],['gap20','20일선 대비'],['rsi14','RSI'],['score_pct','점수(상위%)'],['p_up','+3% 확률'],['p_down','−3% 확률'],['range','5일 90% 범위'],['stop','손절 참고선'],['p_stop','손절 터치 확률'],['spark','추세(60일)'],['flags','표시']];
+var sortable={name:1,close:1,ret1:1,ret5:1,ret20:1,gap20:1,rsi14:1,score_pct:1,p_up:1,p_down:1,stop:1,p_stop:1};
 function head(){return '<thead><tr>'+COLS.map(function(c){var s=sortable[c[0]];var a=st.key===c[0]?(' aria-sort="'+(st.dir>0?'ascending':'descending')+'"'):'';
  return '<th class="'+(c[2]?'l ':'')+(s?'sort':'')+'" data-k="'+c[0]+'"'+a+(s?' tabindex="0"':'')+'>'+c[1]+(st.key===c[0]?(st.dir>0?' ▲':' ▼'):'')+'</th>'}).join('')+'</tr></thead>'}
-function row(s){return '<tr><td class="l name" data-c="'+s.code+'" title="누르면 점수 근거가 펼쳐집니다">'+esc(s.name)+'<small>'+s.code+' · '+s.market+' · '+esc(s.sector)+'</small></td>'+
+function row(s){return '<tr><td class="l name" data-c="'+s.code+'" title="누르면 점수 근거가 펼쳐집니다">'+esc(s.name)+'<small>'+s.code+' · '+s.market+' · '+esc(s.sector)+'</small>'+(s.news&&(s.news.level==='warn'||s.news.level==='caution')?newsPill(s):'')+'</td>'+
  '<td class="num">'+won(s.close)+'</td><td class="num '+cls(s.ret1)+'">'+pct(s.ret1,1,true)+'</td><td class="num '+cls(s.ret5)+'">'+pct(s.ret5,1,true)+'</td><td class="num '+cls(s.ret20)+'">'+pct(s.ret20,1,true)+'</td>'+
  '<td class="num '+cls(s.gap20)+'">'+pct(s.gap20,1,true)+'</td><td class="num">'+(s.rsi14==null?'–':s.rsi14.toFixed(0))+'</td>'+
  '<td class="num">'+Math.max(1,Math.round((1-s.score_pct)*100))+'%</td><td class="num">'+pct(s.p_up,0)+'</td><td class="num">'+pct(s.p_down,0)+'</td>'+
- '<td class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</td><td class="num">'+won(s.stop)+'</td><td>'+spark(s.spark)+'</td><td class="l">'+chips(s.flags)+'</td></tr>'+(st.open===s.code?'<tr class="det"><td colspan="14"><b>점수 근거</b> <span class="note">상위 '+Math.max(1,Math.round((1-s.score_pct)*100))+'% · 점수 '+(s.score==null?'–':s.score.toFixed(2))+'</span>'+whyHTML(s)+'</td></tr>':'')}
+ '<td class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</td><td class="num">'+won(s.stop)+'</td><td class="num">'+pct(s.p_stop,0)+'</td><td>'+spark(s.spark)+'</td><td class="l">'+chips(s.flags)+'</td></tr>'+(st.open===s.code?'<tr class="det"><td colspan="15"><b>점수 근거</b> <span class="note">상위 '+Math.max(1,Math.round((1-s.score_pct)*100))+'% · 점수 '+(s.score==null?'–':s.score.toFixed(2))+'</span>'+whyHTML(s)+newsHTML(s)+'</td></tr>':'')}
 function draw(){
   var q=st.q.trim().toLowerCase();
   var rows=S.filter(function(s){return (st.sector==='all'||s.sector===st.sector)&&(st.mk==='all'||s.market===st.mk)&&(!q||s.name.toLowerCase().indexOf(q)>=0||s.code.indexOf(q)>=0)});
@@ -300,7 +310,7 @@ $('rules').innerHTML='<thead><tr><th class="l">규칙</th><th>해당 건수</th>
 
 /* 보정 표 */
 function calRows(c){return c.filter(function(x){return x.n>0&&x.actual!=null}).map(function(x){return '<tr><td class="l num">'+Math.round(x.lo*100)+'~'+Math.round(x.hi*100)+'%</td><td class="num">'+x.n.toLocaleString('ko-KR')+'</td><td class="num">'+pct(x.pred,0)+'</td><td class="num">'+pct(x.actual,0)+'</td></tr>'}).join('')}
-$('calib').innerHTML='<thead><tr><th class="l">예측 구간</th><th>건수</th><th>모델 평균 예측</th><th>실제 비율</th></tr></thead><tbody><tr><td class="l" colspan="4"><b>+3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_up.base,0)+' · AUC '+V.prob_up.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_up.calibration)+'<tr><td class="l" colspan="4"><b>−3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_down.base,0)+' · AUC '+V.prob_down.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_down.calibration)+'</tbody>';
+$('calib').innerHTML='<thead><tr><th class="l">예측 구간</th><th>건수</th><th>모델 평균 예측</th><th>실제 비율</th></tr></thead><tbody><tr><td class="l" colspan="4"><b>+3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_up.base,0)+' · AUC '+V.prob_up.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_up.calibration)+'<tr><td class="l" colspan="4"><b>−3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_down.base,0)+' · AUC '+V.prob_down.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_down.calibration)+(V.prob_stop?'<tr><td class="l" colspan="4"><b>5일 안에 손절 참고선(종가 − 2×변동폭)을 장중에 건드릴 확률</b> · 전체 기본 비율 '+pct(V.prob_stop.base,0)+' · AUC '+V.prob_stop.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_stop.calibration):'')+'</tbody>';
 
 /* 한계 */
 var L=[

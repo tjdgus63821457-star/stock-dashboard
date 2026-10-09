@@ -2,7 +2,7 @@
 
 저장 내용
 - validation : 워크포워드 검증 결과(과거에 실제로 얼마나 맞았는지)
-- stocks     : 종목별 최신 점수, +3%/-3% 확률, 5일 뒤 80% 가격 범위, 손절 참고선, 규칙 해당 여부
+- stocks     : 종목별 최신 점수, +3%/-3% 확률, 5일 뒤 90% 가격 범위, 5일 안 손절선 터치 확률, 손절 참고선, 규칙 해당 여부
 """
 import argparse
 import json
@@ -19,7 +19,7 @@ from src.fetch_prices import KST
 from src.storage import ROOT
 
 PREDICTIONS_PATH = ROOT / "data" / "predictions.json"
-STOP_ATR = 2.0         # 손절 참고선 = 종가 - 2 x ATR
+STOP_ATR = M.STOP_ATR  # 손절 참고선 = 종가 - 2 x ATR
 
 
 def _calibration_table(oos, label):
@@ -42,6 +42,8 @@ def validate(panel):
     down = M.walk_forward(panel, "down", "logit")
     result["prob_up"] = _calibration_table(up, "up")
     result["prob_down"] = _calibration_table(down, "down")
+    stop = M.walk_forward(panel, "stop", "logit")
+    result["prob_stop"] = _calibration_table(stop, "stop")
     return result
 
 
@@ -53,8 +55,9 @@ def predict_latest(panel, models):
     cur["s_pct"] = cur["score"].rank(pct=True)
     cur["p_up"] = models["up"].predict_proba(cur[M.FEATURES])[:, 1]
     cur["p_down"] = models["down"].predict_proba(cur[M.FEATURES])[:, 1]
-    cur["lo"] = cur["close"] * (1 + models["q10"] * cur["atr_pct"])
-    cur["hi"] = cur["close"] * (1 + models["q90"] * cur["atr_pct"])
+    cur["p_stop"] = models["stop"].predict_proba(cur[M.FEATURES])[:, 1]
+    cur["lo"] = cur["close"] * (1 + models["q05"] * cur["atr_pct"])      # 90% 범위
+    cur["hi"] = cur["close"] * (1 + models["q95"] * cur["atr_pct"])
     cur["stop"] = cur["close"] - STOP_ATR * cur["close"] * cur["atr_pct"]
     flags = {}
     for rules in (S.BUY_RULES, S.SELL_RULES):
@@ -67,6 +70,7 @@ def predict_latest(panel, models):
             "code": r["code"], "date": r["date"],
             "score_pct": round(float(r["s_pct"]), 4),
             "p_up": round(float(r["p_up"]), 4), "p_down": round(float(r["p_down"]), 4),
+            "p_stop": round(float(r["p_stop"]), 4),
             "range_lo": round(float(r["lo"]), 2), "range_hi": round(float(r["hi"]), 2),
             "stop": round(float(r["stop"]), 2),
             "flags": [k for k, v in flags.items() if bool(v.loc[i])],
@@ -85,7 +89,7 @@ def build(now=None, out_path=PREDICTIONS_PATH, validation_path=None):
     payload = {
         "built_at_kst": now.strftime("%Y-%m-%d %H:%M:%S"),
         "asof_date": asof,
-        "q10": models["q10"], "q90": models["q90"], "stop_atr": STOP_ATR,
+        "q05": models["q05"], "q95": models["q95"], "q10": models["q10"], "q90": models["q90"], "stop_atr": STOP_ATR,
         "horizon_days": M.HORIZON, "target": M.TARGET,
         "validation": validation,
         "explain": {"intercept": round(intercept, 4), "factors": factors, "factor_span": span},
@@ -102,7 +106,7 @@ def main(argv=None):
     p = build()
     r = p["validation"]["rank"]
     print(f"예측 완료: 기준일 {p['asof_date']}, {len(p['stocks'])}종목, "
-          f"평가 {r['days']}일 / 80% 범위 적중 {r['range80_coverage']:.1%}")
+          f"평가 {r['days']}일 / 90% 범위 적중 {r['range90_coverage']:.1%}")
     return 0
 
 

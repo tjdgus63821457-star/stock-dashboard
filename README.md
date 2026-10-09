@@ -31,6 +31,7 @@ src/indicators.py        지표 계산, 전 종목 최근 지표 -> data/latest.
 src/model.py, predict.py  예측 모델, 워크포워드 검증 -> data/predictions.json
 src/signals.py, dashboard.py  신호 규칙, 화면 생성 -> docs/index.html
 src/explain.py           점수 근거(요인별 기여, 요인별 과거 상관)
+src/news.py              뉴스 흐름 등급 규칙(data/news.json, 대화에서 요청할 때 갱신)
 data/latest.json         종목별 최근 지표 (이동평균, RSI, ATR, 거래량 비율 등)
 tests/test_pipeline.py   인터넷 없이 도는 시험
 .github/workflows/update.yml   평일 09:00, 14:00 KST 자동 실행

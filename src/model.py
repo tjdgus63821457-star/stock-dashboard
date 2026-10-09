@@ -25,6 +25,7 @@ MARKET_FEATURES = ["mkt_ret5", "mkt_ret20", "mkt_breadth20"]
 PRICE_LEVEL = {"ma5", "ma20", "ma60", "atr14"}
 MODEL_INDICATORS = [c for c in INDICATOR_COLUMNS if c not in PRICE_LEVEL]
 FEATURES = MODEL_INDICATORS + MARKET_FEATURES
+STOP_ATR = 2.0         # 손절 참고선 = 종가 - 2 x ATR
 MAX_JUMP = 0.31        # 하루 31% 초과 변동(분할·신규상장 의심) 전후 구간은 학습에서 제외
 
 
@@ -37,12 +38,16 @@ def build_panel(stocks=None, prices_dir=PRICES_DIR):
         if df is None or len(df) < 70:
             continue
         ind = compute(df)
-        close = df.sort_values("date")["close"].reset_index(drop=True)
+        srt = df.sort_values("date").reset_index(drop=True)
+        close, low = srt["close"], srt["low"]
         # 앞으로 1~5일 종가의 최고/최저 (오늘 값 제외)
         fwd = pd.concat([close.shift(-k) for k in range(1, HORIZON + 1)], axis=1)
         ind["fwd_max"] = fwd.max(axis=1, skipna=False) / close - 1
         ind["fwd_min"] = fwd.min(axis=1, skipna=False) / close - 1
         ind["fwd5"] = close.shift(-HORIZON) / close - 1          # 5일 뒤 종가 수익률
+        # 앞으로 1~5일 중 장중 최저가 (손절선 터치 여부 판정용)
+        lows = pd.concat([low.shift(-k) for k in range(1, HORIZON + 1)], axis=1)
+        ind["fwd_minlow"] = lows.min(axis=1, skipna=False) / close - 1
         jump = close.pct_change().abs() > MAX_JUMP
         near = jump.rolling(2 * HORIZON + 1, center=True, min_periods=1).max().astype(bool)
         # 지표 창(60일) 안에 점프가 있으면 지표도 오염 -> 점프 후 60일은 제외
@@ -62,6 +67,8 @@ def build_panel(stocks=None, prices_dir=PRICES_DIR):
     panel = panel.join(mkt, on="date")
     panel["up"] = (panel["fwd_max"] >= TARGET).astype(float).where(panel["fwd_max"].notna())
     panel["down"] = (panel["fwd_min"] <= -TARGET).astype(float).where(panel["fwd_min"].notna())
+    ok = panel["fwd_minlow"].notna() & panel["atr_pct"].notna()
+    panel["stop"] = (panel["fwd_minlow"] <= -STOP_ATR * panel["atr_pct"]).astype(float).where(ok)
     return panel.sort_values(["date", "code"]).reset_index(drop=True)
 
 
@@ -173,6 +180,7 @@ def walk_forward_rank(panel):
             # 훈련 구간에서 본 '5일 수익률 / 일일변동폭' 분포 -> 평가 구간의 80% 범위 적중 확인용
             ratio = (train["fwd5"] / train["atr_pct"])
             t["q10"], t["q90"] = float(ratio.quantile(0.10)), float(ratio.quantile(0.90))
+            t["q05"], t["q95"] = float(ratio.quantile(0.05)), float(ratio.quantile(0.95))
             t["fold"] = fold
             out.append(t)
         fold += 1
@@ -195,6 +203,9 @@ def rank_summary(oos, top_n=10, cost=0.0025):
     fold_ic = oos.groupby("fold").apply(lambda x: x["s"].corr(x["ex"], method="spearman"), include_groups=False)
     ratio = oos["fwd5"] / oos["atr_pct"]
     cover = ((ratio >= oos["q10"]) & (ratio <= oos["q90"])).mean()
+    inside90 = (ratio >= oos["q05"]) & (ratio <= oos["q95"])
+    cover90 = inside90.mean()
+    by_fold90 = inside90.groupby(oos["fold"]).mean()
     return {
         "n": int(len(oos)), "days": int(oos["date"].nunique()),
         "start": oos["date"].min(), "end": oos["date"].max(),
@@ -208,6 +219,8 @@ def rank_summary(oos, top_n=10, cost=0.0025):
         "folds_top_beats_universe": int((fold_diff > 0).sum()),
         "folds": int(len(fold_diff)),
         "range80_coverage": float(cover),
+        "range90_coverage": float(cover90),
+        "range90_by_fold": [round(float(v), 4) for v in by_fold90],
     }
 
 
@@ -221,7 +234,9 @@ def fit_final(panel):
     down_model = make_model("logit").fit(down[FEATURES], down["down"])
     ratio = (r["fwd5"] / r["atr_pct"])
     return {"rank": rank_model, "up": up_model, "down": down_model,
-            "q10": float(ratio.quantile(0.10)), "q90": float(ratio.quantile(0.90))}
+            "q10": float(ratio.quantile(0.10)), "q90": float(ratio.quantile(0.90)),
+            "q05": float(ratio.quantile(0.05)), "q95": float(ratio.quantile(0.95)),
+            "stop": make_model("logit").fit(_clean(panel, "stop")[FEATURES], _clean(panel, "stop")["stop"])}
 
 
 def contributions(rank_model, X):

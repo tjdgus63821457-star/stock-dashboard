@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.fetch_prices import KST
+from src.news import load_news
 from src.storage import PRICES_DIR, ROOT, load_prices
 from src.universe import load_universe
 
@@ -34,6 +35,7 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
     pred = _load_json(root / "data" / "predictions.json")
     status = _load_json(root / "data" / "status.json")
     uni = {s.code: s for s in load_universe()}
+    news = load_news(root / "data" / "news.json")
     rows = []
     for p in pred["stocks"]:
         ind = latest.get(p["code"])
@@ -46,10 +48,10 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
             "code": s.code, "name": s.name, "market": s.market, "sector": s.sector,
             "close": ind["close"], "ret1": ind["ret1"], "ret5": ind["ret5"], "ret20": ind["ret20"],
             "gap20": ind["gap20"], "rsi14": ind["rsi14"], "vol_ratio": ind["vol_ratio"],
-            "score_pct": p["score_pct"], "p_up": p["p_up"], "p_down": p["p_down"],
+            "score_pct": p["score_pct"], "p_up": p["p_up"], "p_down": p["p_down"], "p_stop": p.get("p_stop"),
             "range_lo": p["range_lo"], "range_hi": p["range_hi"], "stop": p["stop"],
             "flags": p["flags"], "spark": spark,
-            "score": p.get("score"), "why": p.get("why", []), "atr_pct": ind.get("atr_pct"),
+            "news": news["stocks"].get(p["code"]), "score": p.get("score"), "why": p.get("why", []), "atr_pct": ind.get("atr_pct"),
         })
     return {
         "asof_date": pred["asof_date"],
@@ -59,6 +61,7 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
         "failed": status.get("failed", []),
         "validation": pred["validation"],
         "explain": pred.get("explain", {"factors": []}),
+        "news_meta": {"updated_kst": news.get("updated_kst"), "source": news.get("source"), "count": len(news["stocks"])},
         "stocks": rows,
     }
 
