@@ -14,6 +14,7 @@ import pandas as pd
 
 from src import model as M
 from src import signals as S
+from src.explain import factor_table, stock_reasons
 from src.fetch_prices import KST
 from src.storage import ROOT
 
@@ -59,6 +60,7 @@ def predict_latest(panel, models):
     for rules in (S.BUY_RULES, S.SELL_RULES):
         for key, (_, fn) in rules.items():
             flags[key] = fn(cur)
+    reasons, intercept = stock_reasons(models, cur)
     rows = []
     for i, r in cur.iterrows():
         rows.append({
@@ -68,15 +70,17 @@ def predict_latest(panel, models):
             "range_lo": round(float(r["lo"]), 2), "range_hi": round(float(r["hi"]), 2),
             "stop": round(float(r["stop"]), 2),
             "flags": [k for k, v in flags.items() if bool(v.loc[i])],
+            "score": reasons[i]["score"], "why": reasons[i]["why"],
         })
-    return last, rows
+    return last, rows, intercept
 
 
 def build(now=None, out_path=PREDICTIONS_PATH, validation_path=None):
     now = now or datetime.now(KST)
     panel = M.add_rank_columns(M.build_panel())
     models = M.fit_final(panel)
-    asof, rows = predict_latest(panel, models)
+    asof, rows, intercept = predict_latest(panel, models)
+    factors, span = factor_table(panel, models)
     validation = validate(panel)
     payload = {
         "built_at_kst": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -84,6 +88,7 @@ def build(now=None, out_path=PREDICTIONS_PATH, validation_path=None):
         "q10": models["q10"], "q90": models["q90"], "stop_atr": STOP_ATR,
         "horizon_days": M.HORIZON, "target": M.TARGET,
         "validation": validation,
+        "explain": {"intercept": round(intercept, 4), "factors": factors, "factor_span": span},
         "stocks": rows,
     }
     out_path = Path(out_path)

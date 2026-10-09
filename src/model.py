@@ -21,7 +21,10 @@ TARGET = 0.03          # +3% (상승 라벨), -3% (하락 라벨)
 MIN_TRAIN_DAYS = 500   # 첫 평가 전 최소 학습 일수
 TEST_DAYS = 60         # 평가 구간 길이(약 3개월)
 MARKET_FEATURES = ["mkt_ret5", "mkt_ret20", "mkt_breadth20"]
-FEATURES = INDICATOR_COLUMNS + MARKET_FEATURES
+# 주가 '수준'(원 단위)을 그대로 담은 지표는 종목끼리 비교할 수 없고 종목 식별자 역할만 하므로 모델에서 뺍니다.
+PRICE_LEVEL = {"ma5", "ma20", "ma60", "atr14"}
+MODEL_INDICATORS = [c for c in INDICATOR_COLUMNS if c not in PRICE_LEVEL]
+FEATURES = MODEL_INDICATORS + MARKET_FEATURES
 MAX_JUMP = 0.31        # 하루 31% 초과 변동(분할·신규상장 의심) 전후 구간은 학습에서 제외
 
 
@@ -129,7 +132,7 @@ def summarize(oos, label="up", top_n=10):
 # ---------------------------------------------------------------------------
 from sklearn.linear_model import Ridge  # noqa: E402
 
-RANK_FEATURES = ["r_" + c for c in INDICATOR_COLUMNS]
+RANK_FEATURES = ["r_" + c for c in MODEL_INDICATORS]
 RIDGE_ALPHA = 1000.0
 KEEP_COLS = ["close", "gap20", "gap60", "rsi14", "vol_ratio", "ret1", "ret5", "ret20",
              "pullback5", "from_high20", "atr_pct", "ma20"]
@@ -219,3 +222,11 @@ def fit_final(panel):
     ratio = (r["fwd5"] / r["atr_pct"])
     return {"rank": rank_model, "up": up_model, "down": down_model,
             "q10": float(ratio.quantile(0.10)), "q90": float(ratio.quantile(0.90))}
+
+
+def contributions(rank_model, X):
+    """종목별 점수에 각 특징이 얼마나 기여했는지. 점수 = 절편 + 기여의 합 (선형 모델이라 정확히 분해됩니다)."""
+    scaler = rank_model.named_steps["standardscaler"]
+    ridge = rank_model.named_steps["ridge"]
+    z = scaler.transform(X[RANK_FEATURES])
+    return z * ridge.coef_, float(ridge.intercept_)

@@ -85,6 +85,19 @@ input[type=search]{border:1px solid var(--line);background:var(--panel);border-r
 ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .note{font-size:12px;color:var(--muted)}
 details>summary{cursor:pointer;font-weight:600}
+.why{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.wrow{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:2px 8px;align-items:start;font-size:12.5px}
+.wrow .sg{font-family:var(--mono);font-weight:600}
+.wrow .sg.p{color:var(--ok)} .wrow .sg.n{color:var(--bad)}
+.wrow .ev{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;color:var(--muted);font-size:11.5px}
+.wbar{height:5px;border-radius:3px;background:var(--line);position:relative;width:70px;display:inline-block;vertical-align:middle}
+.wbar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--accent)}
+.topcard{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.topcard .hd{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+tr.det td{background:var(--bg);white-space:normal;text-align:left;padding:10px 12px}
+td.name{cursor:pointer}
+td.name:hover{text-decoration:underline}
+
 </style>
 
 <div class="wrap" id="app">
@@ -117,6 +130,13 @@ details>summary{cursor:pointer;font-weight:600}
     </div>
   </section>
 
+  <section class="panel">
+    <h2>점수 상위 종목과 근거 <span class="pill warn">참고용</span></h2>
+    <p class="note" style="margin-bottom:10px">점수가 높은 15종목입니다. 각 종목 아래에는 점수를 올리거나 내린 요인을 큰 순서로 적었습니다. 점수는 "5일 뒤 시장 대비 초과수익을 하루 변동폭으로 나눈 값"에 대한 모델의 예측이고, 요인별 기여를 모두 더하면 점수가 됩니다. 표 안의 종목명을 누르면 같은 설명이 펼쳐집니다.</p>
+    <div class="grid g3" id="topwhy"></div>
+    <p class="note" style="margin-top:10px" id="topwhy-note"></p>
+  </section>
+
   <section class="grid g2">
     <div class="panel"><h2>매수 관심 <span class="pill warn">참고용</span></h2><div class="note" style="margin-bottom:6px">점수 상위 20% · 20일선 위 · RSI 75 이하 중 점수 순</div><div class="list" id="buylist"></div></div>
     <div class="panel"><h2>매도 경계 <span class="pill warn">참고용</span></h2><div class="note" style="margin-bottom:6px">20일선 이탈(거래량 동반) 또는 점수 하위 20%이면서 20일선 아래, 점수 낮은 순</div><div class="list" id="selllist"></div></div>
@@ -131,6 +151,12 @@ details>summary{cursor:pointer;font-weight:600}
     </div>
     <div class="scroll"><table id="tbl"></table></div>
     <p class="note" style="margin-top:8px">5일 범위는 80% 구간입니다. 과거 같은 변동폭의 종목이 5거래일 뒤 이 범위에 있었던 비율이 약 80%였습니다. 손절 참고선은 종가에서 ATR의 2배를 뺀 값입니다.</p>
+  </section>
+
+  <section class="panel">
+    <h2>점수는 어떻게 만들어지나</h2>
+    <p class="note" style="margin-bottom:8px" id="facnote"></p>
+    <div class="scroll"><table id="factbl"></table></div>
   </section>
 
   <section class="panel">
@@ -215,23 +241,46 @@ var sl=S.filter(function(s){return s.flags.indexOf('sell_watch')>=0}).sort(funct
 $('buylist').innerHTML=bl.length?bl.map(item).join(''):'<div class="note">해당 종목 없음</div>';
 $('selllist').innerHTML=sl.length?sl.map(item).join(''):'<div class="note">해당 종목 없음</div>';
 
+
+/* 점수 근거 */
+var FX={};(D.explain.factors||[]).forEach(function(f){FX[f.key]=f});
+function fv(k,v){var f=FX[k];if(v==null||!f)return '–';if(f.fmt==='pct')return pct(v,1,true);if(f.fmt==='num')return v.toFixed(0);if(f.fmt==='x')return v.toFixed(2)+'배';if(f.fmt==='flag')return v>=0.5?'상승 추세':'하락 추세';return String(v)}
+function rankText(r){if(r==null)return '';var n=S.length;return r>=0.5?n+'종목 중 큰 쪽 상위 '+Math.max(1,Math.round((1-r)*100))+'%':n+'종목 중 작은 쪽 하위 '+Math.max(1,Math.round(r*100))+'%'}
+function evid(w){var f=FX[w[0]];if(!f)return '';var share=f.pos_blocks/f.blocks;var solid=share>=0.75||share<=0.25;var agree=((f.ic_mean>0)===(w[3]>0.5))===(w[1]>0);
+ var txt=solid&&agree?'단독으로도 방향이 일관됨':(agree?'단독 근거는 약함 (구간별 방향 불안정)':'단독 방향과는 반대 (다른 요인과 함께 작용)');
+ return '<span class="pill '+(solid&&agree?'ok':'warn')+'">'+txt+'</span>'}
+function whyHTML(s){var w=s.why||[];if(!w.length)return '<div class="note">근거 정보 없음</div>';var mx=Math.max.apply(null,w.map(function(x){return Math.abs(x[1])}))||1;
+ return '<div class="why">'+w.map(function(x){var f=FX[x[0]];var p=x[1]>0;
+  return '<div class="wrow"><span class="sg '+(p?'p':'n')+'">'+(p?'+':'−')+'</span><span>'+esc(f?f.label:x[0])+' <span class="num">'+fv(x[0],x[2])+'</span> <span class="muted">('+rankText(x[3])+')</span></span>'+
+  '<span class="num" style="text-align:right"><span class="wbar"><i style="width:'+(Math.abs(x[1])/mx*100).toFixed(0)+'%;background:'+(p?'var(--ok)':'var(--bad)')+'"></i></span> '+(p?'+':'−')+Math.abs(x[1]).toFixed(3)+'</span>'+
+  '<span class="ev">'+evid(x)+'</span></div>'}).join('')+'</div>'}
+var topS=S.slice().sort(function(a,b){return b.score_pct-a.score_pct}).slice(0,15);
+$('topwhy').innerHTML=topS.map(function(s){return '<div class="topcard"><div class="hd"><span class="t"><b>'+esc(s.name)+'</b> <span class="muted num" style="font-size:11px">'+s.code+'</span></span><span class="num">점수 '+(s.score==null?'–':s.score.toFixed(2))+'</span></div>'+
+ '<div class="s note">'+won(s.close)+'원 · 5일 범위 <span class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</span> · 손절선 <span class="num">'+won(s.stop)+'</span></div>'+whyHTML(s)+'</div>'}).join('');
+$('topwhy-note').textContent='막대는 그 요인이 이 종목 점수에 준 크기입니다. "단독 근거"는 그 요인 하나만으로 과거 약 '+Math.round((D.explain.factor_span||{}).days/250*10)/10+'년을 봤을 때 방향이 일관됐는지를 뜻합니다. 아래 "점수는 어떻게 만들어지나"에서 요인별 수치를 볼 수 있습니다.';
+var fs=D.explain.factor_span||{};
+$('facnote').innerHTML='종목 간 순위를 입력으로 해서 "이후 5일 시장 대비 초과수익" 순위를 예측하는 선형 모델입니다(기간 '+esc(fs.start||'')+' ~ '+esc(fs.end||'')+'). <b>단독 상관(IC)</b>은 그 요인 하나만 썼을 때 하루 단위 순위 상관의 평균이고, <b>양수 구간</b>은 약 60거래일씩 나눈 구간 중 상관이 양수였던 개수입니다. 상관이 0.05에 못 미치고 구간별 방향이 갈리면 우연과 구별하기 어렵습니다. 아래 값은 모두 그런 수준입니다. 주가 자체의 높낮이는 종목 간 비교가 되지 않아 모델에서 제외했습니다.';
+$('factbl').innerHTML='<thead><tr><th class="l">요인</th><th class="l">의미</th><th>모델 가중치</th><th>단독 상관(IC)</th><th>양수 구간</th></tr></thead><tbody>'+
+ (D.explain.factors||[]).map(function(f){return '<tr><td class="l">'+esc(f.label)+'</td><td class="l note" style="white-space:normal;min-width:220px">'+esc(f.meaning)+'</td><td class="num">'+(f.coef>0?'+':'')+f.coef.toFixed(3)+'</td><td class="num">'+(f.ic_mean>0?'+':'')+f.ic_mean.toFixed(3)+'</td><td class="num">'+f.pos_blocks+' / '+f.blocks+'</td></tr>'}).join('')+'</tbody>';
+
 /* 전체 표 */
-var st={sector:'all',q:'',mk:'all',key:'score_pct',dir:-1};
+var st={sector:'all',q:'',mk:'all',key:'score_pct',dir:-1,open:null};
 var COLS=[['name','종목',1],['close','현재가'],['ret1','1일'],['ret5','5일'],['ret20','20일'],['gap20','20일선 대비'],['rsi14','RSI'],['score_pct','점수(상위%)'],['p_up','+3% 확률'],['p_down','−3% 확률'],['range','5일 80% 범위'],['stop','손절 참고선'],['spark','추세(60일)'],['flags','표시']];
 var sortable={name:1,close:1,ret1:1,ret5:1,ret20:1,gap20:1,rsi14:1,score_pct:1,p_up:1,p_down:1,stop:1};
 function head(){return '<thead><tr>'+COLS.map(function(c){var s=sortable[c[0]];var a=st.key===c[0]?(' aria-sort="'+(st.dir>0?'ascending':'descending')+'"'):'';
  return '<th class="'+(c[2]?'l ':'')+(s?'sort':'')+'" data-k="'+c[0]+'"'+a+(s?' tabindex="0"':'')+'>'+c[1]+(st.key===c[0]?(st.dir>0?' ▲':' ▼'):'')+'</th>'}).join('')+'</tr></thead>'}
-function row(s){return '<tr><td class="l name">'+esc(s.name)+'<small>'+s.code+' · '+s.market+' · '+esc(s.sector)+'</small></td>'+
+function row(s){return '<tr><td class="l name" data-c="'+s.code+'" title="누르면 점수 근거가 펼쳐집니다">'+esc(s.name)+'<small>'+s.code+' · '+s.market+' · '+esc(s.sector)+'</small></td>'+
  '<td class="num">'+won(s.close)+'</td><td class="num '+cls(s.ret1)+'">'+pct(s.ret1,1,true)+'</td><td class="num '+cls(s.ret5)+'">'+pct(s.ret5,1,true)+'</td><td class="num '+cls(s.ret20)+'">'+pct(s.ret20,1,true)+'</td>'+
  '<td class="num '+cls(s.gap20)+'">'+pct(s.gap20,1,true)+'</td><td class="num">'+(s.rsi14==null?'–':s.rsi14.toFixed(0))+'</td>'+
  '<td class="num">'+Math.max(1,Math.round((1-s.score_pct)*100))+'%</td><td class="num">'+pct(s.p_up,0)+'</td><td class="num">'+pct(s.p_down,0)+'</td>'+
- '<td class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</td><td class="num">'+won(s.stop)+'</td><td>'+spark(s.spark)+'</td><td class="l">'+chips(s.flags)+'</td></tr>'}
+ '<td class="num">'+won(s.range_lo)+' ~ '+won(s.range_hi)+'</td><td class="num">'+won(s.stop)+'</td><td>'+spark(s.spark)+'</td><td class="l">'+chips(s.flags)+'</td></tr>'+(st.open===s.code?'<tr class="det"><td colspan="14"><b>점수 근거</b> <span class="note">상위 '+Math.max(1,Math.round((1-s.score_pct)*100))+'% · 점수 '+(s.score==null?'–':s.score.toFixed(2))+'</span>'+whyHTML(s)+'</td></tr>':'')}
 function draw(){
   var q=st.q.trim().toLowerCase();
   var rows=S.filter(function(s){return (st.sector==='all'||s.sector===st.sector)&&(st.mk==='all'||s.market===st.mk)&&(!q||s.name.toLowerCase().indexOf(q)>=0||s.code.indexOf(q)>=0)});
   rows.sort(function(a,b){var x=a[st.key],y=b[st.key];if(st.key==='name')return st.dir*x.localeCompare(y,'ko');return st.dir*((x==null?-1e9:x)-(y==null?-1e9:y))});
   $('tbl').innerHTML=head()+'<tbody>'+rows.map(row).join('')+'</tbody>';
   $('count').textContent='('+rows.length+'개 표시)';
+  Array.prototype.forEach.call(document.querySelectorAll('td.name'),function(td){td.onclick=function(){var c=td.getAttribute('data-c');st.open=st.open===c?null:c;draw()}});
   Array.prototype.forEach.call(document.querySelectorAll('th.sort'),function(th){var f=function(){var k=th.getAttribute('data-k');if(st.key===k)st.dir*=-1;else{st.key=k;st.dir=k==='name'?1:-1}draw()};th.onclick=f;th.onkeydown=function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();f()}}});
 }
 var secNames=Object.keys(sec).sort(function(a,b){return sec[b].length-sec[a].length});

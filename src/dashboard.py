@@ -49,6 +49,7 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
             "score_pct": p["score_pct"], "p_up": p["p_up"], "p_down": p["p_down"],
             "range_lo": p["range_lo"], "range_hi": p["range_hi"], "stop": p["stop"],
             "flags": p["flags"], "spark": spark,
+            "score": p.get("score"), "why": p.get("why", []), "atr_pct": ind.get("atr_pct"),
         })
     return {
         "asof_date": pred["asof_date"],
@@ -57,6 +58,7 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
         "latest_bar_date": status["latest_bar_date"],
         "failed": status.get("failed", []),
         "validation": pred["validation"],
+        "explain": pred.get("explain", {"factors": []}),
         "stocks": rows,
     }
 
