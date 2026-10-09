@@ -276,3 +276,6 @@ code,name,market,sector_key,sector,industry_en,symbol
 395400,SK리츠,KOSPI,re,부동산·리츠,REIT - Office,395400.KS
 330590,롯데리츠,KOSPI,re,부동산·리츠,REIT - Retail,330590.KS
 012630,HDC,KOSPI,re,부동산·리츠,Real Estate - Development,012630.KS
+000660,SK하이닉스,KOSPI,tech,IT·반도체,Semiconductors,000660.KS
+017670,SK텔레콤,KOSPI,comm,커뮤니케이션·인터넷·엔터,Telecommunications Services,017670.KS
+030200,KT,KOSPI,comm,커뮤니케이션·인터넷·엔터,Telecommunications Services,030200.KS

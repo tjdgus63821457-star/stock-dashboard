@@ -22,6 +22,15 @@ PREDICTIONS_PATH = ROOT / "data" / "predictions.json"
 STOP_ATR = M.STOP_ATR  # 손절 참고선 = 종가 - 2 x ATR
 
 
+def model_version():
+    """모델 정의 파일의 해시. 기록된 예측이 어떤 모델에서 나왔는지 구분하는 데 씁니다."""
+    import hashlib
+    h = hashlib.sha1()
+    for n in ("model.py", "explain.py", "signals.py", "indicators.py"):
+        h.update((Path(__file__).with_name(n)).read_bytes())
+    return h.hexdigest()[:8]
+
+
 def _calibration_table(oos, label):
     t = M.summarize(oos, label)
     return {"auc": t["auc"], "base": t["base"], "calibration": t["calibration"]}
@@ -38,16 +47,14 @@ def validate(panel):
             ev["name"] = name
             ev["group"] = group
             result["rules"][key] = ev
-    up = M.walk_forward(panel, "up", "logit")
-    down = M.walk_forward(panel, "down", "logit")
-    result["prob_up"] = _calibration_table(up, "up")
-    result["prob_down"] = _calibration_table(down, "down")
-    stop = M.walk_forward(panel, "stop", "logit")
-    result["prob_stop"] = _calibration_table(stop, "stop")
-    return result
+    oos = {k: M.walk_forward(panel, k, "logit") for k in ("up", "down", "stop")}
+    for k in oos:
+        result["prob_" + k] = _calibration_table(oos[k], k)
+        result["prob_" + k]["isotonic"] = M.calibration_check(oos[k], k)
+    return result, oos
 
 
-def predict_latest(panel, models):
+def predict_latest(panel, models, calibrators=None):
     """가장 최근 날짜의 종목별 예측."""
     last = panel["date"].max()
     cur = panel[(panel["date"] == last) & (~panel["bad"])].dropna(subset=M.FEATURES + M.RANK_FEATURES).copy()
@@ -56,6 +63,8 @@ def predict_latest(panel, models):
     cur["p_up"] = models["up"].predict_proba(cur[M.FEATURES])[:, 1]
     cur["p_down"] = models["down"].predict_proba(cur[M.FEATURES])[:, 1]
     cur["p_stop"] = models["stop"].predict_proba(cur[M.FEATURES])[:, 1]
+    for k, cal in (calibrators or {}).items():     # 보정이 검증에서 도움이 된 확률만 보정
+        cur["p_" + k] = cal.predict(cur["p_" + k].values)
     cur["lo"] = cur["close"] * (1 + models["q05"] * cur["atr_pct"])      # 90% 범위
     cur["hi"] = cur["close"] * (1 + models["q95"] * cur["atr_pct"])
     cur["stop"] = cur["close"] - STOP_ATR * cur["close"] * cur["atr_pct"]
@@ -83,14 +92,18 @@ def build(now=None, out_path=PREDICTIONS_PATH, validation_path=None):
     now = now or datetime.now(KST)
     panel = M.add_rank_columns(M.build_panel())
     models = M.fit_final(panel)
-    asof, rows, intercept = predict_latest(panel, models)
+    validation, oos = validate(panel)
+    calibrators = {k: M.fit_calibrator(oos[k], k) for k in oos if validation["prob_" + k]["isotonic"]["use"]}
+    asof, rows, intercept = predict_latest(panel, models, calibrators)
     factors, span = factor_table(panel, models)
-    validation = validate(panel)
+    for k in oos:
+        validation["prob_" + k]["calibrated"] = k in calibrators
     payload = {
         "built_at_kst": now.strftime("%Y-%m-%d %H:%M:%S"),
         "asof_date": asof,
         "q05": models["q05"], "q95": models["q95"], "q10": models["q10"], "q90": models["q90"], "stop_atr": STOP_ATR,
         "horizon_days": M.HORIZON, "target": M.TARGET,
+        "model_version": model_version(),
         "validation": validation,
         "explain": {"intercept": round(intercept, 4), "factors": factors, "factor_span": span},
         "stocks": rows,

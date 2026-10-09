@@ -63,7 +63,9 @@ def evaluate_rule(oos, mask, cost=0.0025):
         return {"n": int(len(sel))}
     diff = sel["fwd5"] - sel["um"]
     per_fold = diff.groupby(sel["fold"]).mean()
+    from src.model import _tstat
     return {
+        "t": _tstat(per_fold.values),
         "n": int(len(sel)),
         "mean_5d": float(sel["fwd5"].mean()),
         "universe_mean_5d": float(d["fwd5"].mean()),

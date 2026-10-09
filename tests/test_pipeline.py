@@ -38,8 +38,8 @@ def make_df(dates, close=100.0):
 class UniverseTest(unittest.TestCase):
     def test_universe_is_complete(self):
         stocks = load_universe()
-        self.assertEqual(len(stocks), 277)
-        self.assertEqual(len({s.code for s in stocks}), 277)
+        self.assertEqual(len(stocks), 280)
+        self.assertEqual(len({s.code for s in stocks}), 280)
         self.assertEqual(len({s.sector_key for s in stocks}), 11)
         for s in stocks:
             self.assertEqual(len(s.code), 6)
@@ -47,6 +47,12 @@ class UniverseTest(unittest.TestCase):
             self.assertIn(s.symbol[-3:], (".KS", ".KQ"))
             self.assertIn(s.market, ("KOSPI", "KOSDAQ"))
             self.assertTrue(s.name and s.sector)
+
+    def test_previously_missing_large_caps_are_present(self):
+        by_code = {s.code: s for s in load_universe()}
+        for code, name in (("000660", "SK하이닉스"), ("017670", "SK텔레콤"), ("030200", "KT")):
+            self.assertEqual(by_code[code].name, name)
+            self.assertEqual(by_code[code].symbol, code + ".KS")
 
     def test_samsung_is_kospi(self):
         by_code = {s.code: s for s in load_universe()}
@@ -136,6 +142,28 @@ def make_stocks(n):
         Stock(f"{i:06d}", f"종목{i}", "KOSPI", "tech", "IT·반도체", "Semiconductors", f"{i:06d}.KS")
         for i in range(1, n + 1)
     ]
+
+
+class RefreshRuleTest(unittest.TestCase):
+    def test_full_refresh_only_monday_morning(self):
+        kst = fp.KST
+        self.assertTrue(fp.should_full_refresh(datetime(2026, 10, 5, 9, 5, tzinfo=kst)))     # 월 오전
+        self.assertFalse(fp.should_full_refresh(datetime(2026, 10, 5, 14, 5, tzinfo=kst)))   # 월 오후
+        self.assertFalse(fp.should_full_refresh(datetime(2026, 10, 6, 9, 5, tzinfo=kst)))    # 화 오전
+
+    def test_new_stock_starts_five_years_back(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = {}
+
+            def fetcher(symbols, start, end):
+                seen["start"] = start
+                return {}
+
+            now = datetime(2026, 10, 6, 14, 0, tzinfo=fp.KST)
+            fp.run(make_stocks(1), fetcher=fetcher, now=now, base=Path(tmp) / "p",
+                   status_path=Path(tmp) / "s.json", batch_size=3, pause=0)
+            self.assertLessEqual((now.date() - seen["start"]).days, 5 * 366)
+            self.assertGreater((now.date() - seen["start"]).days, 4 * 366)
 
 
 class RunTest(unittest.TestCase):

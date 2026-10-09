@@ -21,7 +21,7 @@
 ## 폴더 구조
 
 ```
-data/universe.csv        종목 277개 (코드, 이름, 섹터, 가격 조회 심볼)
+data/universe.csv        종목 280개 (코드, 이름, 섹터, 가격 조회 심볼)
 data/prices/{코드}.csv    종목별 일봉 (date, open, high, low, close, volume)
 data/status.json         마지막 실행 결과 (성공·실패 종목, 최신 봉 날짜)
 src/universe.py          종목 목록 읽기
@@ -52,3 +52,10 @@ python -m src.fetch_prices --limit 10
 - 수정주가 기준이라 배당·분할이 생기면 과거 값이 바뀝니다. 최근 7일만 다시 받으므로, 이후 단계에서 주 1회 전체 재수집을 추가할 예정입니다.
 - 한국 공휴일 판정은 아직 없습니다. 휴장일에는 새 봉이 생기지 않고, `latest_bar_date`로 확인할 수 있습니다.
 - GitHub Actions의 예약 실행은 정각보다 몇 분에서 수십 분 늦을 수 있습니다.
+
+## 정합성 장치 (추가)
+- `src/quality.py` 가격·산출물 품질 검사. 오류가 있으면 Actions가 중단되어 잘못된 페이지가 게시되지 않습니다.
+- 유의성 검정(구간별 t검정, 규칙 7개 본페로니 보정), 확률 isotonic 보정(이전 구간으로만 학습·검증, 도움이 될 때만 적용).
+- `src/forward.py` 전진 검증: 확정된 일봉의 예측을 `data/forward_log.csv`에 추가 전용으로 쌓고 5거래일 뒤 채점 → `data/forward_summary.json`.
+- 패키지 버전 고정(`requirements.txt`), 예측마다 모델 버전 해시 기록.
+- 신규 종목은 5년치를 한 번에 받고, 월요일 첫 실행은 전체 재수집으로 수정주가를 다시 맞춥니다.

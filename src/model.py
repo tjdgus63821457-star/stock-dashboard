@@ -192,6 +192,18 @@ def walk_forward_rank(panel):
     return oos
 
 
+def _tstat(x):
+    """구간별 평균이 0과 다른지 보는 t값과 양측 p값. 구간이 3개 미만이면 None."""
+    import numpy as _np
+    from scipy import stats as _st
+    x = _np.asarray(x, dtype=float)
+    x = x[~_np.isnan(x)]
+    if len(x) < 3 or x.std(ddof=1) == 0:
+        return None
+    t = float(x.mean() / (x.std(ddof=1) / _np.sqrt(len(x))))
+    return {"t": round(t, 2), "p": round(float(2 * _st.t.sf(abs(t), len(x) - 1)), 4), "n": int(len(x))}
+
+
 def rank_summary(oos, top_n=10, cost=0.0025):
     """순위 모델 요약. 모든 비교는 '같은 날 전체 종목 평균'을 기준으로 합니다."""
     oos = oos.copy()
@@ -206,7 +218,11 @@ def rank_summary(oos, top_n=10, cost=0.0025):
     inside90 = (ratio >= oos["q05"]) & (ratio <= oos["q95"])
     cover90 = inside90.mean()
     by_fold90 = inside90.groupby(oos["fold"]).mean()
+    # 유의성: 겹치는 5일 수익률 때문에 일 단위 t값은 부풀려지므로, 60일 구간(fold) 평균으로 t검정합니다.
+    ic_t = _tstat(fold_ic.values)
+    diff_t = _tstat(fold_diff.values)
     return {
+        "ic_t": ic_t, "top_diff_t": diff_t,
         "n": int(len(oos)), "days": int(oos["date"].nunique()),
         "start": oos["date"].min(), "end": oos["date"].max(),
         "ic_mean": float(ic.mean()), "ic_pos_days": float((ic > 0).mean()),
@@ -245,3 +261,37 @@ def contributions(rank_model, X):
     ridge = rank_model.named_steps["ridge"]
     z = scaler.transform(X[RANK_FEATURES])
     return z * ridge.coef_, float(ridge.intercept_)
+
+
+# ---- 확률 보정 (isotonic) -------------------------------------------------
+def brier(p, y):
+    p = np.asarray(p, float); y = np.asarray(y, float)
+    return float(np.mean((p - y) ** 2))
+
+
+def calibration_check(oos, label, min_train_folds=3):
+    """보정이 실제로 도움이 되는지 확인합니다.
+
+    각 구간(fold)은 '그 이전 구간들의 표본 외 예측'으로만 보정기를 학습해 평가하므로
+    미래 정보가 섞이지 않습니다. 개선이 없으면 보정을 쓰지 않습니다.
+    """
+    from sklearn.isotonic import IsotonicRegression
+    d = oos.dropna(subset=["p", label])
+    folds = sorted(d["fold"].unique())
+    raw, cal, ys = [], [], []
+    for f in folds[min_train_folds:]:
+        tr, te = d[d["fold"] < f], d[d["fold"] == f]
+        iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(tr["p"], tr[label])
+        raw.append(te["p"].values); cal.append(iso.predict(te["p"].values)); ys.append(te[label].values)
+    if not ys:
+        return {"use": False}
+    raw, cal, ys = np.concatenate(raw), np.concatenate(cal), np.concatenate(ys)
+    b0, b1 = brier(raw, ys), brier(cal, ys)
+    return {"use": bool(b1 < b0), "brier_raw": round(b0, 5), "brier_cal": round(b1, 5),
+            "folds_checked": len(folds) - min_train_folds}
+
+
+def fit_calibrator(oos, label):
+    from sklearn.isotonic import IsotonicRegression
+    d = oos.dropna(subset=["p", label])
+    return IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(d["p"], d[label])

@@ -174,6 +174,11 @@ td.name:hover{text-decoration:underline}
     <div class="scroll"><table id="calib"></table></div>
   </section>
 
+  <section class="panel" id="integrity">
+    <h2>신뢰도 점검</h2>
+    <ul class="plain" id="integrity-list"></ul>
+  </section>
+
   <section class="panel" id="limits">
     <h2>한계와 주의</h2>
     <ul class="plain" id="limitlist"></ul>
@@ -312,13 +317,29 @@ $('rules').innerHTML='<thead><tr><th class="l">규칙</th><th>해당 건수</th>
 function calRows(c){return c.filter(function(x){return x.n>0&&x.actual!=null}).map(function(x){return '<tr><td class="l num">'+Math.round(x.lo*100)+'~'+Math.round(x.hi*100)+'%</td><td class="num">'+x.n.toLocaleString('ko-KR')+'</td><td class="num">'+pct(x.pred,0)+'</td><td class="num">'+pct(x.actual,0)+'</td></tr>'}).join('')}
 $('calib').innerHTML='<thead><tr><th class="l">예측 구간</th><th>건수</th><th>모델 평균 예측</th><th>실제 비율</th></tr></thead><tbody><tr><td class="l" colspan="4"><b>+3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_up.base,0)+' · AUC '+V.prob_up.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_up.calibration)+'<tr><td class="l" colspan="4"><b>−3% 도달 확률</b> · 전체 기본 비율 '+pct(V.prob_down.base,0)+' · AUC '+V.prob_down.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_down.calibration)+(V.prob_stop?'<tr><td class="l" colspan="4"><b>5일 안에 손절 참고선(종가 − 2×변동폭)을 장중에 건드릴 확률</b> · 전체 기본 비율 '+pct(V.prob_stop.base,0)+' · AUC '+V.prob_stop.auc.toFixed(2)+'</td></tr>'+calRows(V.prob_stop.calibration):'')+'</tbody>';
 
+/* 신뢰도 점검: 통계적 유의성, 자료 품질, 전진 검증 */
+var I=[];
+function tTxt(t){return t?'t='+t.t.toFixed(2)+', p='+t.p.toFixed(2):'계산 불가'}
+I.push('<b>순위 점수의 유의성.</b> 구간(60일)별 평균으로 검정한 결과 정보계수(IC) '+tTxt(R.ic_t)+', 상위 10종목 초과수익 '+tTxt(R.top_diff_t)+'. p가 0.05보다 크면 "우연과 구분되지 않는다"는 뜻이라, 종목 고르는 능력이 입증됐다고 말할 수 없습니다.');
+var ruleKeys=Object.keys(V.rules||{}), nr=ruleKeys.length, sig=ruleKeys.filter(function(k){var t=V.rules[k].t;return t&&t.p<0.05/nr});
+I.push('<b>규칙 '+nr+'개를 동시에 검정(본페로니 보정, 기준 p<'+(0.05/nr).toFixed(3)+').</b> '+(sig.length?'통과: '+sig.map(function(k){return V.rules[k].name}).join(', '):'통과한 규칙이 없습니다. 많이 시험할수록 우연히 좋아 보이는 것이 생기기 때문에 기준을 엄격하게 잡았습니다.'));
+var iso=['up','down','stop'].map(function(k){var c=V['prob_'+k];return {k:k,c:c}});
+I.push('<b>확률 보정.</b> '+iso.map(function(x){var n={up:'+3% 도달',down:'−3% 도달',stop:'손절선 터치'}[x.k],i=x.c.isotonic||{};return n+': '+(x.c.calibrated?'보정 적용(예측오차 '+i.brier_raw+' → '+i.brier_cal+')':'보정이 도움이 안 되어 원래 값 사용')}).join(' · ')+'. 보정기는 이전 구간 자료로만 학습해 이후 구간에서 검증했습니다.');
+var Q=D.quality||{}, qs=Q.summary;
+if(qs){I.push('<b>가격 자료 품질 검사.</b> '+qs.checked+'종목 중 이상 징후 '+qs.with_issues+'종목, 오류 '+(Q.errors||[]).length+'건, 경고 '+(Q.warnings||[]).length+'건'+((Q.errors||[]).length?' — 오류가 있으면 이 화면의 숫자를 믿지 마세요: '+Q.errors.slice(0,3).map(esc).join('; '):'')+'. (오류가 나면 자동 갱신이 멈춥니다. 고가·저가 불일치 1~2일 같은 경미한 항목이 대부분입니다.)')}
+var F=D.forward||{};
+if(F.scored_days>0){I.push('<b>전진 검증(예측을 먼저 기록한 뒤 5거래일 후 채점).</b> '+F.scored_days+'일치 · 상위 10종목 − 전체 평균 '+pct(F.top_vs_universe_5d,2)+' · IC '+F.ic_mean.toFixed(3)+' · 90% 범위 적중 '+pct(F.range_hit,0)+' · 손절선 터치 예측 '+pct(F.stop_pred_mean,0)+' vs 실제 '+pct(F.stop_actual,0)+(F.scored_days<F.min_days_for_verdict?' — <b>표본이 '+F.min_days_for_verdict+'일 미만이라 결론을 내리기엔 이릅니다.</b>':''))}
+else{I.push('<b>전진 검증.</b> 확정된 일봉으로 만든 예측을 '+(F.logged_days||0)+'일치 기록했고, 5거래일이 지나면 채점해 여기에 보여 드립니다. 과거 검증은 설계 중 같은 기간을 여러 번 봤기 때문에, 이 기록이 가장 정직한 검증입니다.')}
+I.push('<span class="note">모델 버전 '+esc(D.model_version||'-')+' · 14시 갱신분의 오늘 봉은 장중 값이라 기록·채점에는 확정된 날짜만 씁니다.</span>');
+$('integrity-list').innerHTML=I.map(function(t){return '<li>'+t+'</li>'}).join('');
+
 /* 한계 */
 var L=[
  '<b>생존 편향.</b> 종목 목록이 최근 시점에 골라진 '+S.length+'개라서 이미 잘 오른 종목이 많이 섞여 있습니다. 전체 평균 5일 수익률이 '+pct(R.universe_mean_5d,2)+'로 높게 나오는 이유입니다. 실제 투자 성과는 이보다 낮을 수 있습니다.',
  '<b>검증 기간.</b> '+R.start+' ~ '+R.end+'('+R.days+'거래일) 한 번의 시장 국면입니다. 다른 국면에서는 결과가 달라질 수 있습니다.',
  '<b>5일 범위가 위쪽으로 치우쳐 있습니다.</b> 과거 5일 수익률 분포를 그대로 썼기 때문에 상승 쪽이 더 넓습니다. 하락 쪽은 손절 참고선을 함께 보세요.',
  '<b>14시 갱신분의 오늘 봉은 장중 값입니다.</b> 다음 갱신에서 확정 값으로 바뀝니다. 가격은 약 20분 지연될 수 있습니다.',
- '<b>수집되지 않은 종목.</b> '+(D.failed.length?D.failed.join(', ')+'은(는) 가격을 가져오지 못해 빠져 있습니다. ':'')+'SK하이닉스, SK텔레콤, KT는 종목 목록에 아직 없습니다.',
+ '<b>수집되지 않은 종목.</b> '+(D.failed.length?D.failed.join(', ')+'은(는) 가격을 가져오지 못해 빠져 있습니다. ':'')+'종목 목록은 현재 시총 상위 중심이라 상장폐지·편출 종목이 빠져 있습니다(생존 편향).',
  '<b>미국 종목과 뉴스는 이 자동 화면에 없습니다.</b> 속보 판단은 대화에서 요청할 때 만들어 드립니다.',
  '이 화면에는 주문 기능이 없습니다. 모든 숫자는 통계 추정치이며 투자 판단과 손실의 책임은 본인에게 있습니다.'];
 $('limitlist').innerHTML=L.map(function(t){return '<li>'+t+'</li>'}).join('');

@@ -53,8 +53,18 @@ def collect(root=ROOT, prices_dir=PRICES_DIR):
             "flags": p["flags"], "spark": spark,
             "news": news["stocks"].get(p["code"]), "score": p.get("score"), "why": p.get("why", []), "atr_pct": ind.get("atr_pct"),
         })
+    def opt(name, default):
+        f = root / "data" / name
+        return _load_json(f) if f.exists() else default
+    quality = opt("quality.json", {})
+    fwd = opt("forward_summary.json", {})
     return {
         "asof_date": pred["asof_date"],
+        "model_version": pred.get("model_version"),
+        "quality": {"summary": quality.get("summary"), "errors": quality.get("errors", []),
+                    "warnings": quality.get("warnings", []),
+                    "checked_at_kst": quality.get("checked_at_kst")},
+        "forward": fwd,
         "built_at_kst": pred["built_at_kst"],
         "today_kst": status["today_kst"],
         "latest_bar_date": status["latest_bar_date"],

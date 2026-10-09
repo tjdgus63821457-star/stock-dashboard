@@ -106,6 +106,19 @@ def _fetch_with_retry(fetcher, symbols, start, end, tries=2, wait=5.0):
     return {}
 
 
+NEW_STOCK_YEARS = 5      # 처음 받는 종목은 5년치를 한 번에 받습니다
+FULL_REFRESH_WEEKDAY = 0  # 월요일 오전 첫 실행은 전체 재수집(배당·분할로 바뀐 수정주가 반영)
+
+
+def should_full_refresh(now):
+    """월요일 정오 이전 실행이면 전체 재수집을 합니다.
+
+    수정주가는 배당·분할이 생기면 과거 값이 전부 바뀌므로, 최근 7일만 덧붙이면
+    이어붙인 지점에서 가격이 어긋납니다. 주 1회 전체를 다시 받아 이를 막습니다.
+    """
+    return now.weekday() == FULL_REFRESH_WEEKDAY and now.hour < 12
+
+
 def run(
     stocks,
     fetcher=fetch_batch,
@@ -125,7 +138,11 @@ def run(
         first = today - timedelta(days=int(backfill_years * 366))
         starts = {s.code: first for s in stocks}
     else:
-        starts = {s.code: start_date_for(olds[s.code], today) for s in stocks}
+        new_first = today - timedelta(days=int(NEW_STOCK_YEARS * 366))
+        starts = {
+            s.code: (new_first if olds[s.code] is None else start_date_for(olds[s.code], today))
+            for s in stocks
+        }
 
     ok, failed, last_dates = [], [], {}
     for i in range(0, len(stocks), batch_size):
@@ -177,7 +194,11 @@ def main(argv=None):
     if args.limit > 0:
         stocks = stocks[: args.limit]
 
-    status = run(stocks, backfill_years=args.backfill_years)
+    years = args.backfill_years
+    if years == 0 and should_full_refresh(datetime.now(KST)):
+        years = NEW_STOCK_YEARS
+        print("월요일 첫 실행: 전체 재수집으로 수정주가를 다시 맞춥니다.")
+    status = run(stocks, backfill_years=years)
     print(
         f"완료: {status['ok']}/{status['total']}종목 저장, "
         f"실패 {len(status['failed'])}종목, 최신 봉 날짜 {status['latest_bar_date']}"
