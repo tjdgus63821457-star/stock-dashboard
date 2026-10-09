@@ -25,6 +25,9 @@ INDICATOR_COLUMNS = [
     "rsi14", "atr14", "atr_pct", "vol_ratio",
     "ret1", "ret5", "ret20", "from_high20", "from_high60",
     "pullback5", "macd_hist",
+    # 투자 대가·학계에서 널리 검증된 요인 (모두 종목 간 비교가 되는 비율 값)
+    "mom12_1", "ret60", "ret120", "high52", "above_low52", "break55",
+    "gap200", "slope200", "vol60", "minervini",
 ]
 
 
@@ -80,6 +83,31 @@ def compute(df):
     ema26 = close.ewm(span=26, adjust=False).mean()
     macd = ema12 - ema26
     out["macd_hist"] = (macd - macd.ewm(span=9, adjust=False).mean()) / close
+
+    # --- 대가·학계 요인 ---------------------------------------------------
+    # 12-1 모멘텀(Jegadeesh-Titman): 최근 1개월을 빼고 지난 11개월 수익률
+    out["mom12_1"] = close.shift(21) / close.shift(252) - 1
+    out["ret60"] = close.pct_change(60)
+    out["ret120"] = close.pct_change(120)
+    # 52주 고점 근접도(George-Hwang), 52주 저점 위 거리(미너비니)
+    out["high52"] = close / high.rolling(252).max() - 1
+    out["above_low52"] = close / low.rolling(252).min() - 1
+    # 55일 신고가 돌파 거리(터틀 트레이딩의 돌파 규칙, 오늘 제외 직전 55일 최고가 기준)
+    out["break55"] = close / high.shift(1).rolling(55).max() - 1
+    ma50 = close.rolling(50).mean()
+    ma150 = close.rolling(150).mean()
+    ma200 = close.rolling(200).mean()
+    out["gap200"] = close / ma200 - 1
+    out["slope200"] = ma200 / ma200.shift(21) - 1
+    # 저변동 효과(Baker-Haugen, Frazzini-Pedersen): 60일 일간 수익률 표준편차
+    out["vol60"] = close.pct_change().rolling(60).std()
+    # 미너비니 트렌드 템플릿 충족 개수(0~7)
+    conds = pd.concat([
+        close > ma150, close > ma200, ma150 > ma200, ma200 > ma200.shift(21),
+        ma50 > ma150, close > ma50,
+        (close >= 1.3 * low.rolling(252).min()) & (close >= 0.75 * high.rolling(252).max()),
+    ], axis=1)
+    out["minervini"] = conds.astype(float).sum(axis=1).where(ma200.notna())
 
     out["close"] = close
     return out[["date", "close"] + INDICATOR_COLUMNS]
