@@ -111,12 +111,12 @@ FULL_REFRESH_WEEKDAY = 0  # 월요일 오전 첫 실행은 전체 재수집(배�
 
 
 def should_full_refresh(now):
-    """월요일 정오 이전 실행이면 전체 재수집을 합니다.
+    """월요일 10시 이전(첫 실행)이면 전체 재수집을 합니다.
 
     수정주가는 배당·분할이 생기면 과거 값이 전부 바뀌므로, 최근 7일만 덧붙이면
     이어붙인 지점에서 가격이 어긋납니다. 주 1회 전체를 다시 받아 이를 막습니다.
     """
-    return now.weekday() == FULL_REFRESH_WEEKDAY and now.hour < 12
+    return now.weekday() == FULL_REFRESH_WEEKDAY and now.hour < 10
 
 
 def run(

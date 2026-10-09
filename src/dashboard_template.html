@@ -205,7 +205,7 @@ $('theme').onclick=function(){var dark=root.getAttribute('data-theme')==='dark'|
 
 /* 헤더 */
 var fresh=D.latest_bar_date===D.today_kst;
-$('meta').innerHTML='<span>기준일 <b class="num">'+D.asof_date+'</b></span><span>갱신 <span class="num">'+D.built_at_kst+'</span> KST</span><span class="pill '+(fresh?'ok':'warn')+'">'+(fresh?'오늘 데이터 반영':'오늘 봉 없음(휴장·지연 가능)')+'</span><span class="pill info">평일 09시 · 14시 자동 갱신</span>';
+$('meta').innerHTML='<span>기준일 <b class="num">'+D.asof_date+'</b></span><span>갱신 <span class="num">'+D.built_at_kst+'</span> KST</span><span class="pill '+(fresh?'ok':'warn')+'">'+(fresh?'오늘 데이터 반영':'오늘 봉 없음(휴장·지연 가능)')+'</span><span class="pill info">평일 장중 매시 자동 갱신</span>';
 
 /* 결론 */
 var edge=R.top_vs_universe_5d, edgeNet=R.top_vs_universe_after_cost;
@@ -330,7 +330,7 @@ if(qs){I.push('<b>가격 자료 품질 검사.</b> '+qs.checked+'종목 중 이�
 var F=D.forward||{};
 if(F.scored_days>0){I.push('<b>전진 검증(예측을 먼저 기록한 뒤 5거래일 후 채점).</b> '+F.scored_days+'일치 · 상위 10종목 − 전체 평균 '+pct(F.top_vs_universe_5d,2)+' · IC '+F.ic_mean.toFixed(3)+' · 90% 범위 적중 '+pct(F.range_hit,0)+' · 손절선 터치 예측 '+pct(F.stop_pred_mean,0)+' vs 실제 '+pct(F.stop_actual,0)+(F.scored_days<F.min_days_for_verdict?' — <b>표본이 '+F.min_days_for_verdict+'일 미만이라 결론을 내리기엔 이릅니다.</b>':''))}
 else{I.push('<b>전진 검증.</b> 확정된 일봉으로 만든 예측을 '+(F.logged_days||0)+'일치 기록했고, 5거래일이 지나면 채점해 여기에 보여 드립니다. 과거 검증은 설계 중 같은 기간을 여러 번 봤기 때문에, 이 기록이 가장 정직한 검증입니다.')}
-I.push('<span class="note">모델 버전 '+esc(D.model_version||'-')+' · 14시 갱신분의 오늘 봉은 장중 값이라 기록·채점에는 확정된 날짜만 씁니다.</span>');
+I.push('<span class="note">모델 버전 '+esc(D.model_version||'-')+' · 장중 갱신분의 오늘 봉은 장중 값이라 기록·채점에는 확정된 날짜만 씁니다.</span>');
 $('integrity-list').innerHTML=I.map(function(t){return '<li>'+t+'</li>'}).join('');
 
 /* 한계 */
@@ -338,7 +338,7 @@ var L=[
  '<b>생존 편향.</b> 종목 목록이 최근 시점에 골라진 '+S.length+'개라서 이미 잘 오른 종목이 많이 섞여 있습니다. 전체 평균 5일 수익률이 '+pct(R.universe_mean_5d,2)+'로 높게 나오는 이유입니다. 실제 투자 성과는 이보다 낮을 수 있습니다.',
  '<b>검증 기간.</b> '+R.start+' ~ '+R.end+'('+R.days+'거래일) 한 번의 시장 국면입니다. 다른 국면에서는 결과가 달라질 수 있습니다.',
  '<b>5일 범위가 위쪽으로 치우쳐 있습니다.</b> 과거 5일 수익률 분포를 그대로 썼기 때문에 상승 쪽이 더 넓습니다. 하락 쪽은 손절 참고선을 함께 보세요.',
- '<b>14시 갱신분의 오늘 봉은 장중 값입니다.</b> 다음 갱신에서 확정 값으로 바뀝니다. 가격은 약 20분 지연될 수 있습니다.',
+ '<b>장중(15:30 전) 갱신분의 오늘 봉은 장중 값입니다.</b> 다음 갱신에서 확정 값으로 바뀝니다. 가격은 약 20분 지연될 수 있습니다.',
  '<b>수집되지 않은 종목.</b> '+(D.failed.length?D.failed.join(', ')+'은(는) 가격을 가져오지 못해 빠져 있습니다. ':'')+'종목 목록은 현재 시총 상위 중심이라 상장폐지·편출 종목이 빠져 있습니다(생존 편향).',
  '<b>미국 종목과 뉴스는 이 자동 화면에 없습니다.</b> 속보 판단은 대화에서 요청할 때 만들어 드립니다.',
  '이 화면에는 주문 기능이 없습니다. 모든 숫자는 통계 추정치이며 투자 판단과 손실의 책임은 본인에게 있습니다.'];

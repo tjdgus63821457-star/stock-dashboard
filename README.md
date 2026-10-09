@@ -34,7 +34,7 @@ src/explain.py           점수 근거(요인별 기여, 요인별 과거 상관
 src/news.py              뉴스 흐름 등급 규칙(data/news.json, 대화에서 요청할 때 갱신)
 data/latest.json         종목별 최근 지표 (이동평균, RSI, ATR, 거래량 비율 등)
 tests/test_pipeline.py   인터넷 없이 도는 시험
-.github/workflows/update.yml   평일 09:00, 14:00 KST 자동 실행
+.github/workflows/update.yml   평일 09~16시 매시 정각(KST) 자동 실행
 ```
 
 ## 내 컴퓨터에서 실행하기 (선택)
@@ -48,7 +48,7 @@ python -m src.fetch_prices --limit 10
 ## 알려진 한계
 
 - 가격은 Yahoo Finance(yfinance)에서 가져옵니다. 약 20분 지연될 수 있고, 일부 종목은 조회되지 않을 수 있습니다. 조회 실패 종목은 `data/status.json`의 `failed`에 기록됩니다.
-- 14시 실행분의 당일 봉은 장중 값입니다. 다음 실행에서 확정 값으로 덮어씁니다.
+- 장중(09~15시) 실행분의 당일 봉은 장중 값입니다. 다음 실행에서 확정 값으로 덮어씁니다.
 - 수정주가 기준이라 배당·분할이 생기면 과거 값이 바뀝니다. 최근 7일만 다시 받으므로, 이후 단계에서 주 1회 전체 재수집을 추가할 예정입니다.
 - 한국 공휴일 판정은 아직 없습니다. 휴장일에는 새 봉이 생기지 않고, `latest_bar_date`로 확인할 수 있습니다.
 - GitHub Actions의 예약 실행은 정각보다 몇 분에서 수십 분 늦을 수 있습니다.
